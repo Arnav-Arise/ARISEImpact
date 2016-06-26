@@ -1,0 +1,27 @@
+<!doctype HTML>
+<html>
+ <head>
+  <title>Login Form</title>
+    <script>
+            function sendValues()
+               {
+                var User = {
+                    "username" : document.Registration.username.value,
+                    "password" : document.Registration.pass.value,
+                           };
+                // send data to backend
+                return true;
+               }
+            
+     </script>
+  </head>
+  <body>        
+   <h1>Login Here:</h1>
+   <form action="POST" name="Registration" onsubmit="return sendValues()">
+      <br /><br />Username: <input type="text" name="username" required>  
+      <br /><br />Password: <input type="password" name="pass" required>
+      <br />
+      <input type="submit" value="Login">
+   </form>
+   </body>
+</html>
