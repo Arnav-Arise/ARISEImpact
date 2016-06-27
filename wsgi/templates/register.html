@@ -1,11 +1,61 @@
-{% extends "layout.html" %}
-{% block body %}
+<!doctype html>
+<title>ARISE Impact </title>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+<meta charset="utf-8">
+<style>
+body {
+	padding-top: 60px;
+	padding-bottom: 100px;
+}
+</style>
+<link href="/static/css/bootstrap.css" rel="stylesheet">
+<link href="/static/css/bootstrap-responsive.css" rel="stylesheet">
+<script src="/static/js/jquery.js"></script>
+<script src="/static/js/bootstrap.js"></script>
+
+<div class="navbar navbar-inverse navbar-fixed-top">
+		<div class="navbar-inner">
+			<div class="container">
+				<button type="button" class="btn btn-navbar" data-toggle="collapse"
+					data-target=".nav-collapse">
+					<span class="icon-bar"></span> <span class="icon-bar"></span> <span
+						class="icon-bar"></span>
+				</button>
+				<a class="brand" href="/">ARISE Impact</a>
+				<div class="nav-collapse collapse">
+					<ul class="nav">
+						<li class="active"><a href="/">Home</a></li>
+						
+						
+							<li><a href="/login">Login</a></li>
+							<li><a href="/register">Register</a></li>
+						
+					</ul>
+				</div>
+				<!--/.nav-collapse -->
+			</div>
+		</div>
+</div>
+
+<div id="main" class="container">
+	
+	
+	
+
+	
   <form action="" method=post class="form-horizontal">
     <h2>Sign up for ARISE Impact Web Application </h2>
     <div class="control-group">
         <div class="controls">
+          <input type="text" id="name" name="name" class="input-xlarge"
+            placeholder="Enter Your Full Name" value=""
+            required>
+        </div>
+    </div>
+    <div class="control-group">
+        <div class="controls">
           <input type="text" id="username" name="username" class="input-xlarge"
-            placeholder="Enter Username" value="{{ request.form.username }}"
+            placeholder="Enter Username" value=""
             required>
         </div>
     </div>
@@ -13,7 +63,7 @@
     <div class="control-group">
         <div class="controls">
           <input type="password" id="password" name="password" class="input-xlarge"
-            placeholder="Enter Password" value="{{ request.form.password }}"
+            placeholder="Enter Password" value=""
             required>
         </div>
     </div>
@@ -21,15 +71,29 @@
     <div class="control-group">
         <div class="controls">
           <input type="email" id="email" name="email" class="input-xlarge"
-            placeholder="Enter Email" value="{{ request.form.username }}"
+            placeholder="Enter Email" value=""
             required>
         </div>
     </div>
-
+    <div class="control-group">
+        <div class="controls">
+          <input type="text" id="org" name="org" class="input-xlarge"
+            placeholder="Enter Name of Organization" value=""
+            required>
+        </div>
+    </div>
     <div class="control-group">
         <div class="controls">
           <button type="submit" class="btn btn-success">Signup</button>
         </div>
     </div>
   </form>
-{% endblock %}
+
+	<hr>
+	<footer id="footer">
+				<p>&copy; ARISE Impact, 2016</p>
+
+				<p>App built using Flask, SQLAlchemy, PostgreSQL , and Twitter Bootstrap</p>
+				<p><a href="https://www.openshift.com/" target="_blank"><img alt="Powered by OpenShift" src="https://www.openshift.com/sites/default/files/images/powered-transparent-black.png"></a></p>		
+	</footer>
+</div>
