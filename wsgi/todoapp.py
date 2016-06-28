@@ -1,12 +1,17 @@
 # SQLALCHEMY_DATABASE_URI = os.environ['OPENSHIFT_POSTGRESQL_DB_URL']
-from datetime import datetime
-import uuid
 import re
-from flask import Flask, session, request, flash, url_for, redirect, render_template, abort, g
-from flask_sqlalchemy import SQLAlchemy
+import uuid
+from datetime import datetime
+
+from flask import Flask, request, flash, url_for, redirect, render_template, g
 from flask_login import LoginManager, unicode
 from flask_login import login_user, logout_user, current_user, login_required
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy_utils import UUIDType
+
+# Assuming#  master account
+master = "master_account@arise-impact.org"
 
 app = Flask(__name__)
 app.config.from_pyfile('todoapp.cfg')
@@ -17,9 +22,20 @@ login_manager.init_app(app)
 
 login_manager.login_view = 'login'
 
+
+# Interact with Bucket and compile a table of the list of documents, with an id
+def accessdocs():
+    __tablename__ = "documents"
+    doc_id = db.Column('doc_id', db.Integer, primary_key=True)
+    doc_title = db.Column('doc_title')
+    doc_date = db.Column('doc_date', db.DateTime)
+    db.create_all()
+    db.season.commit()
+
+
 class User(db.Model):
     __tablename__ = "users"
-    id = db.Column('user_id', db.Integer, primary_key=True)
+    id = db.Column('user_id', UUIDType(binary=False), primary_key=True)
     username = db.Column('username', db.String(20), unique=True, index=True)
     password = db.Column('password', db.String(250))
     email = db.Column('email', db.String(50), unique=True, index=True)
@@ -27,6 +43,8 @@ class User(db.Model):
     todos = db.relationship('Todo', backref='user', lazy='dynamic')
     org = db.Column('org', db.String(250))
     name = db.Column('name', db.String(250))
+    role = db.Column('role', db.Text)
+
     # Note to self -Understand the index property
     db.create_all()
     db.session.commit()
@@ -35,11 +53,19 @@ class User(db.Model):
         self.username = username
         self.set_password(password)
         self.email = email
+        self.role = self.analyzerole(master)
         self.name = name
         self.org = org
         self.registered_on = datetime.utcnow()
         self.id = uuid.uuid4()
-#        self.ctr=0
+
+    def analyzerole(self, m):
+        if self.email is m:
+            return 'master'
+        elif self.email.endswith('@arise-impact.org'):
+            return 'admin'
+        else:
+            return 'standard'
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -72,6 +98,7 @@ class User(db.Model):
             return False
         return True
 
+
 class Todo(db.Model):
     __tablename__ = 'todos'
     id = db.Column('todo_id', db.Integer, primary_key=True)
@@ -93,26 +120,30 @@ class Todo(db.Model):
 def passwordValid(p):
     x = False
     while not x:
-        if (len(p) < 6 or len(p) > 12):
+        if (len(p) < 6 or len(p) > 20):
             flash("Password not the right length (6-20)")
-            x=True
+            x = True
         if not re.search("[a-z]", p):
             flash("Password does not contain lower case letters!")
-            x=True
+            x = True
         if not re.search("[0-9]", p):
             flash("Password does not contain numbers!")
-            x=True
+            x = True
         if not re.search("[A-Z]", p):
             flash("Password does not contain upper case letters!")
-            x=True
-        if not re.search("[$#@]", p):
-            flash("Password does not contain special characters!")
-            x=True
+            x = True
         if re.search("\s", p):
             flash("Password contains spaces!")
-            x=True
+            x = True
         break
     return not x
+
+
+@app.route('/directory', methods=['GET', 'POST'])
+@login_required
+def directory():
+    return render_template('directory.html')
+
 
 @app.route('/')
 @login_required
@@ -136,7 +167,7 @@ def new():
             db.session.add(todo)
             db.session.commit()
             flash('Todo item was successfully created')
-#            ctr += 1
+            #            ctr += 1
             return redirect(url_for('index'))
     return render_template('new.html')
 
@@ -157,15 +188,15 @@ def show_or_update(todo_id):
     return redirect(url_for('show_or_update', todo_id=todo_id))
 
 
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'GET':
         return render_template('register.html')
-    user = User(request.form['username'], request.form['password'], request.form['email'], request.form['name'], request.form['org'])
-    snag=False
+    user = User(request.form['username'], request.form['password'], request.form['email'], request.form['name'],
+                request.form['org'])
+    snag = False
     if request.form['password'] != request.form['confirm']:
-        snag= True
+        snag = True
         flash('Passwords do not match')
     if user.OneWord() is False:
         snag = True
@@ -178,10 +209,11 @@ def register():
     if snag is False:
         db.session.add(user)
         db.session.commit()
-        flash('User successfully registered')
+        flash('User successfully registered as ' + user.role) #Remove role once confirmed as working
         return redirect(url_for('login'))
     else:
         return redirect(url_for('register'))
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -213,7 +245,7 @@ def logout():
 
 @login_manager.user_loader
 def load_user(id):
-    return User.query.get(int(id))
+    return User.query.get(id)
 
 
 @app.before_request

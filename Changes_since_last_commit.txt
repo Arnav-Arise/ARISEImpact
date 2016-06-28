@@ -1,0 +1,5 @@
+1. Role COLUMN added and function analyzerole() created
+2. Problems with password validation handled (6-20 limit)
+3. id changed to type uuid using sqlalchemy_utils directory. Setup.py also changed
+4. Confirm password perfected
+5. Basic directories frontend setup. Table and interaction with S3 bucket using library 'boto3' yet to be done
