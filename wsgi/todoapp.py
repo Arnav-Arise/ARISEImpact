@@ -1,5 +1,7 @@
 # SQLALCHEMY_DATABASE_URI = os.environ['OPENSHIFT_POSTGRESQL_DB_URL']
 from datetime import datetime
+import uuid
+import re
 from flask import Flask, session, request, flash, url_for, redirect, render_template, abort, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, unicode
@@ -36,7 +38,8 @@ class User(db.Model):
         self.name = name
         self.org = org
         self.registered_on = datetime.utcnow()
-        self.ctr=0
+        self.id = uuid.uuid4()
+#        self.ctr=0
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -59,6 +62,15 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % (self.username)
 
+    def OneWord(self):
+        if ' ' in self.username:
+            return False
+        return True
+
+    def containsSpecial(self):
+        if all(x.isalpha() or x.isspace() for x in self.name):
+            return False
+        return True
 
 class Todo(db.Model):
     __tablename__ = 'todos'
@@ -70,12 +82,37 @@ class Todo(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'))
     db.create_all()
     db.session.commit()
+
     def __init__(self, title, text):
         self.title = title
         self.text = text
         self.done = False
         self.pub_date = datetime.utcnow()
 
+
+def passwordValid(p):
+    x = False
+    while not x:
+        if (len(p) < 6 or len(p) > 12):
+            flash("Password not the right length (6-20)")
+            x=True
+        if not re.search("[a-z]", p):
+            flash("Password does not contain lower case letters!")
+            x=True
+        if not re.search("[0-9]", p):
+            flash("Password does not contain numbers!")
+            x=True
+        if not re.search("[A-Z]", p):
+            flash("Password does not contain upper case letters!")
+            x=True
+        if not re.search("[$#@]", p):
+            flash("Password does not contain special characters!")
+            x=True
+        if re.search("\s", p):
+            flash("Password contains spaces!")
+            x=True
+        break
+    return not x
 
 @app.route('/')
 @login_required
@@ -120,16 +157,31 @@ def show_or_update(todo_id):
     return redirect(url_for('show_or_update', todo_id=todo_id))
 
 
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'GET':
         return render_template('register.html')
     user = User(request.form['username'], request.form['password'], request.form['email'], request.form['name'], request.form['org'])
-    db.session.add(user)
-    db.session.commit()
-    flash('User successfully registered')
-    return redirect(url_for('login'))
-
+    snag=False
+    if request.form['password'] != request.form['confirm']:
+        snag= True
+        flash('Passwords do not match')
+    if user.OneWord() is False:
+        snag = True
+        flash('Username has to be One Word')
+    if user.containsSpecial() is True:
+        snag = True
+        flash('Name cannot contain Special Characters or Numbers')
+    if passwordValid(request.form['password']) is False:
+        snag = True
+    if snag is False:
+        db.session.add(user)
+        db.session.commit()
+        flash('User successfully registered')
+        return redirect(url_for('login'))
+    else:
+        return redirect(url_for('register'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

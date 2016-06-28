@@ -38,12 +38,19 @@ body {
 </div>
 
 <div id="main" class="container">
-	
-	
-	
+    {% with messages = get_flashed_messages() %}
+	{% if messages %}
+	  <div class="alert">
+		    <ul class="flashes">
+		    {% for message in messages %}
+		      <li>{{ message }}</li>
+		    {% endfor %}
+		    </ul>
+		</div>
+	{% endif %}
+	{% endwith %}
 
-	
-  <form action="" method=post class="form-horizontal">
+    <form action="" method=post class="form-horizontal">
     <h2>Sign up for ARISE Impact Web Application </h2>
     <div class="control-group">
         <div class="controls">
@@ -68,6 +75,13 @@ body {
         </div>
     </div>
 
+    <div class="control-group">
+        <div class="controls">
+          <input type="password" id="confirm" name="confirm" class="input-xlarge"
+            placeholder="Confirm Password" value=""
+            required>
+        </div>
+    </div>
     <div class="control-group">
         <div class="controls">
           <input type="email" id="email" name="email" class="input-xlarge"
