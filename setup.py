@@ -6,5 +6,5 @@ setup(name='TodoApp',
       author='Arnav-Vivek-Sanyam',
       author_email='arnav.pandey@ariseimpact.org',
       url='http://www.python.org/sigs/distutils-sig/',
-      install_requires=['flask', 'flask-login', 'sqlalchemy', 'flask-sqlalchemy', 'sqlalchemy-utils'],
+      install_requires=['flask', 'flask-login', 'sqlalchemy', 'flask-sqlalchemy', 'sqlalchemy-utils', 'twitter'],
       )

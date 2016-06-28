@@ -2,7 +2,8 @@
 import re
 import uuid
 from datetime import datetime
-
+from twitter import *
+import boto3
 from flask import Flask, request, flash, url_for, redirect, render_template, g
 from flask_login import LoginManager, unicode
 from flask_login import login_user, logout_user, current_user, login_required
@@ -10,7 +11,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy_utils import UUIDType
 
-# Assuming#  master account
+# Set master account here
 master = "master_account@arise-impact.org"
 
 app = Flask(__name__)
@@ -23,14 +24,18 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 
-# Interact with Bucket and compile a table of the list of documents, with an id
-def accessdocs():
+
+class Doc(db.Model):
     __tablename__ = "documents"
-    doc_id = db.Column('doc_id', db.Integer, primary_key=True)
-    doc_title = db.Column('doc_title')
-    doc_date = db.Column('doc_date', db.DateTime)
+    doc_id = db.Column('doc_id', db.Integer, primary_key=True, autoincrement=True)
+    doc_title = db.Column('doc_title', db.Text)
+    doc_bucket = db.Column('doc_bucket', db.Text)
     db.create_all()
-    db.season.commit()
+    db.session.commit()
+
+    def __init__(self, title, bucket):
+        self.doc_title=title
+        self.doc_bucket=bucket
 
 
 class User(db.Model):
@@ -138,12 +143,38 @@ def passwordValid(p):
         break
     return not x
 
+@app.route('/autotweet', methods=['GET', 'POST'])
+@login_required
+def auto():
+    #Query user's data here and check role
+    if request.method == 'POST':
+        if not request.form['text']:
+            flash('Title is required', 'error')
+        else:
+            new_status=request.form['text']
+            config = {}
+            exec(open("twit_conf.py").read(), config)
+            twit = Twitter(
+                auth=OAuth(config["access_key"], config["access_secret"], config["consumer_key"], config["consumer_secret"]))
+            result = twit.statuses.update(status = new_status)
+            if result is True:
+                flash("Tweeted successfully!")
+            else:
+                flash("ERROR: Tweet failed. Please try again later")
+            return redirect(url_for('auto'))
+    return render_template('autotweet.html')
 
 @app.route('/directory', methods=['GET', 'POST'])
 @login_required
 def directory():
+    s3 = boto3.resource('s3')
+    for buck in s3.buckets.all():  # Fill in the Bucket Name here
+        for file in buck.objects.all():
+            key = file.key
+            doc = Doc(key, buck.name)
+            db.session.add(doc)
+            db.session.commit()
     return render_template('directory.html')
-
 
 @app.route('/')
 @login_required
@@ -151,6 +182,7 @@ def index():
     return render_template('index.html',
                            todos=Todo.query.filter_by(user_id=g.user.id).order_by(Todo.pub_date.desc()).all()
                            )
+
 
 
 @app.route('/new', methods=['GET', 'POST'])
@@ -167,10 +199,17 @@ def new():
             db.session.add(todo)
             db.session.commit()
             flash('Todo item was successfully created')
-            #            ctr += 1
             return redirect(url_for('index'))
     return render_template('new.html')
 
+@app.route('/directory/<string:doc_title>', methods=['GET', 'POST'])
+@login_required
+def showdoc(doc_id):
+    doc_item = Doc.query.get(doc_id)
+    if request.method == 'GET':
+        return render_template('docview.html', doc=doc_id)
+    flash('You are not authorized to view this file', 'error')
+    return redirect(url_for('showdoc', doc_id=doc_id))
 
 @app.route('/todos/<int:todo_id>', methods=['GET', 'POST'])
 @login_required

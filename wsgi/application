@@ -5,7 +5,8 @@ virtenv = os.environ['OPENSHIFT_PYTHON_DIR'] + '/virtenv/'
 os.environ['PYTHON_EGG_CACHE'] = os.path.join(virtenv, 'lib/python2.6/site-packages')
 virtualenv = os.path.join(virtenv, 'bin/activate_this.py')
 try:
-    execfile(virtualenv, dict(__file__=virtualenv))
+    #execfile(virtualenv, dict(__file__=virtualenv))
+    exec(compile(open(virtualenv, 'rb').read(), virtualenv, 'exec'), dict(__file__=virtualenv)) #For Python 3.3 above
 except IOError:
     pass
 #

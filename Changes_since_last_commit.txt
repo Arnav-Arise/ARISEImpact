@@ -1,5 +1,19 @@
+//Note- Later alphabets indicate later commits
+A
 1. Role COLUMN added and function analyzerole() created
 2. Problems with password validation handled (6-20 limit)
-3. id changed to type uuid using sqlalchemy_utils directory. Setup.py also changed
+3. id changed to type uuid using sqlalchemy_utils directory. Setup.py also changed accordingly
 4. Confirm password perfected
 5. Basic directories frontend setup. Table and interaction with S3 bucket using library 'boto3' yet to be done
+
+B
+FEATURE 1: Document Viewing
+1. Document view set up as an IFrame in docview.html
+2. New Model called 'Doc' set up to handle documents
+3. execfile() function is outdated in Python 3.0 and above. Please note (Nothing has been done to handle this)
+4. '/directory' route for list of documents
+5. '/directory/doc_title' route for viewing the document
+
+FEATURE 2: Auto-tweet
+1. Add your credentials in twit_conf.py
+2. '/autotweet' to view interface
