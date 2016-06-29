@@ -2,15 +2,18 @@
 import re
 import uuid
 from datetime import datetime
-from twitter import *
+from tempfile import TemporaryFile
 import boto3
+import flask
 from flask import Flask, request, flash, url_for, redirect, render_template, g
 from flask_login import LoginManager, unicode
 from flask_login import login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy_utils import UUIDType
 from gtts import gTTS
+from sqlalchemy_utils import UUIDType
+from twitter import *
+from werkzeug.security import generate_password_hash, check_password_hash
+
 # Set master account here
 master = "master_account@arise-impact.org"
 
@@ -191,7 +194,13 @@ def mytts():
             flash('Text needed to proceed', 'error')
         else:
             text_input = request.form['text']
-            tts = gTTS(text=text_input, lang='en')
+            tts = gTTS(text=text_input, lang=request.form['lang'])
+            f=TemporaryFile()
+            tts.write_to_fp(f)
+            flask.send_file(f,as_attachment=True,attachment_filename="MyTTSOutput", mimetype="audio/mpeg")
+            f.close()
+            flash('Successful Text-to-Speech Convert')
+            return redirect(url_for('mytts'))
     return render_template('mytts.html')
 
 @app.route('/autotweet', methods=['GET', 'POST'])
@@ -218,18 +227,24 @@ def auto():
 @app.route('/directory', methods=['GET', 'POST'])
 @login_required
 def directory():
-    return render_template('index.html',
-                           documents=Doc.order_by(Doc.getId()).all()
+    s3=boto3.resource('s3')
+    for bucket in s3.buckets.all():
+        for file in bucket.objects.filter(Prefix='foo/bar'):
+            doc = Doc(file, bucket.name)
+            db.session.add(doc)
+            db.session.commit()
+    return render_template('directory.html',
+                           documents=Doc.query.order_by(Doc.doc_id).all()
                            )
 
 @app.route('/directory/<string:doc_title>', methods=['GET', 'POST'])
 @login_required
-def showdoc(doc_id):
-    doc_item = Doc.query.get(doc_id)
+def showdoc(doc_title):
+    doc_item = Doc.query.get(doc_title)
     if request.method == 'GET':
         return render_template('docview.html', doc=doc_item)
     flash('You are not authorized to view this file', 'error')
-    return redirect(url_for('showdoc', doc_id=doc_id))
+    return redirect(url_for('showdoc', doc_title=doc_title))
 # Download feature not implemented yet
 
 

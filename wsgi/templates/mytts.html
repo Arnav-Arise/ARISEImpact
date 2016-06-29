@@ -12,16 +12,27 @@
 		</div>
 	{% endif %}
 	{% endwith %}
-  <form action="" method=post class="form-horizontal">
-    <h2>Auto Tweet</h2>
+
+    <form action="" method=post class="form-horizontal">
+        <h2>Convert Text To Speech</h2>
     <div class="control-group">
         <div class="controls">
-          <textarea name="text" rows=10 class="input-xlarge" placeholder="Enter tweet text here" required>{{ request.form.text }}</textarea>
+          <textarea name="text" rows=10 class="input-xlarge" placeholder="Enter text to be converted here" required>{{ request.form.text }}</textarea>
+        </div>
+    </div>
+     <br />
+        <p> Select language:</p>
+    <div class="control-group">
+        <div class="controls">
+          <select name="lang" id="lang">
+              <option value="en" selected>English</option>
+              <option value="hi">Hindi</option>
+          </select>
         </div>
     </div>
       <div class="control-group">
         <div class="controls">
-          <button type="submit" class="btn btn-success">TWEET!</button>
+          <button type="submit" class="btn btn-success">CONVERT!</button>
           <a href="{{ url_for('index') }}"><button type="button" class="btn btn-info">HOME</button></a>
 
         </div>
