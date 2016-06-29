@@ -16,7 +16,7 @@
     <h2>Auto Tweet</h2>
     <div class="control-group">
         <div class="controls">
-          <textarea name="text" rows=10 class="input-xlarge" placeholder="Enter tweet text here" required>{{ newtweet }}</textarea>
+          <textarea name="text" rows=10 class="input-xlarge" placeholder="Enter tweet text here" required>{{ request.form.text }}</textarea>
         </div>
     </div>
       <div class="control-group">

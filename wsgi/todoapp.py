@@ -10,7 +10,7 @@ from flask_login import login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy_utils import UUIDType
-
+from gtts import gTTS
 # Set master account here
 master = "master_account@arise-impact.org"
 
@@ -36,7 +36,8 @@ class Doc(db.Model):
     def __init__(self, title, bucket):
         self.doc_title=title
         self.doc_bucket=bucket
-
+    def getId(self):
+        return self.doc_id
 
 class User(db.Model):
     __tablename__ = "users"
@@ -126,7 +127,7 @@ def passwordValid(p):
     x = False
     while not x:
         if (len(p) < 6 or len(p) > 20):
-            flash("Password not the right length (6-20)")
+            flash("Password is not the right length (6-20)")
             x = True
         if not re.search("[a-z]", p):
             flash("Password does not contain lower case letters!")
@@ -142,6 +143,56 @@ def passwordValid(p):
             x = True
         break
     return not x
+
+@app.route('/')
+@login_required
+def index():
+    return render_template('index.html',
+                           todos=Todo.query.filter_by(user_id=g.user.id).order_by(Todo.pub_date.desc()).all()
+                           )
+
+@app.route('/todos/<int:todo_id>', methods=['GET', 'POST'])
+@login_required
+def show_or_update(todo_id):
+    todo_item = Todo.query.get(todo_id)
+    if request.method == 'GET':
+        return render_template('view.html', todo=todo_item)
+    if todo_item.user.id == g.user.id:
+        todo_item.title = request.form['title']
+        todo_item.text = request.form['text']
+        todo_item.done = ('done.%d' % todo_id) in request.form
+        db.session.commit()
+        return redirect(url_for('index'))
+    flash('You are not authorized to edit this todo item', 'error')
+    return redirect(url_for('show_or_update', todo_id=todo_id))
+
+@app.route('/new', methods=['GET', 'POST'])
+@login_required
+def new():
+    if request.method == 'POST':
+        if not request.form['title']:
+            flash('Title is required', 'error')
+        elif not request.form['text']:
+            flash('Text is required', 'error')
+        else:
+            todo = Todo(request.form['title'], request.form['text'])
+            todo.user = g.user
+            db.session.add(todo)
+            db.session.commit()
+            flash('Todo item was successfully created')
+            return redirect(url_for('index'))
+    return render_template('new.html')
+
+@app.route('/mytts', methods=['GET', 'POST'])
+@login_required
+def mytts():
+    if request.method == 'POST':
+        if not request.form['text']:
+            flash('Text needed to proceed', 'error')
+        else:
+            text_input = request.form['text']
+            tts = gTTS(text=text_input, lang='en')
+    return render_template('mytts.html')
 
 @app.route('/autotweet', methods=['GET', 'POST'])
 @login_required
@@ -167,64 +218,19 @@ def auto():
 @app.route('/directory', methods=['GET', 'POST'])
 @login_required
 def directory():
-    s3 = boto3.resource('s3')
-    for buck in s3.buckets.all():  # Fill in the Bucket Name here
-        for file in buck.objects.all():
-            key = file.key
-            doc = Doc(key, buck.name)
-            db.session.add(doc)
-            db.session.commit()
-    return render_template('directory.html')
-
-@app.route('/')
-@login_required
-def index():
     return render_template('index.html',
-                           todos=Todo.query.filter_by(user_id=g.user.id).order_by(Todo.pub_date.desc()).all()
+                           documents=Doc.order_by(Doc.getId()).all()
                            )
-
-
-
-@app.route('/new', methods=['GET', 'POST'])
-@login_required
-def new():
-    if request.method == 'POST':
-        if not request.form['title']:
-            flash('Title is required', 'error')
-        elif not request.form['text']:
-            flash('Text is required', 'error')
-        else:
-            todo = Todo(request.form['title'], request.form['text'])
-            todo.user = g.user
-            db.session.add(todo)
-            db.session.commit()
-            flash('Todo item was successfully created')
-            return redirect(url_for('index'))
-    return render_template('new.html')
 
 @app.route('/directory/<string:doc_title>', methods=['GET', 'POST'])
 @login_required
 def showdoc(doc_id):
     doc_item = Doc.query.get(doc_id)
     if request.method == 'GET':
-        return render_template('docview.html', doc=doc_id)
+        return render_template('docview.html', doc=doc_item)
     flash('You are not authorized to view this file', 'error')
     return redirect(url_for('showdoc', doc_id=doc_id))
-
-@app.route('/todos/<int:todo_id>', methods=['GET', 'POST'])
-@login_required
-def show_or_update(todo_id):
-    todo_item = Todo.query.get(todo_id)
-    if request.method == 'GET':
-        return render_template('view.html', todo=todo_item)
-    if todo_item.user.id == g.user.id:
-        todo_item.title = request.form['title']
-        todo_item.text = request.form['text']
-        todo_item.done = ('done.%d' % todo_id) in request.form
-        db.session.commit()
-        return redirect(url_for('index'))
-    flash('You are not authorized to edit this todo item', 'error')
-    return redirect(url_for('show_or_update', todo_id=todo_id))
+# Download feature not implemented yet
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -236,7 +242,15 @@ def register():
     snag = False
     if request.form['password'] != request.form['confirm']:
         snag = True
-        flash('Passwords do not match')
+        flash('Password does not match confirmation')
+    prior = User.query.filter_by(username=request.form['username']).first()
+    if prior is not None:
+        snag = True
+        flash('Username is not unique')
+    prior = User.query.filter_by(email=request.form['email']).first()
+    if prior is not None:
+        snag = True
+        flash('This E-mail ID has already been registered!')
     if user.OneWord() is False:
         snag = True
         flash('Username has to be One Word')

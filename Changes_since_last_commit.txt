@@ -17,3 +17,7 @@ FEATURE 1: Document Viewing
 FEATURE 2: Auto-tweet
 1. Add your credentials in twit_conf.py
 2. '/autotweet' to view interface
+
+
+C
+Document Viewing: Corrections made to feature
