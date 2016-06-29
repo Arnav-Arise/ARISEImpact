@@ -1,10 +1,7 @@
 # SQLALCHEMY_DATABASE_URI = os.environ['OPENSHIFT_POSTGRESQL_DB_URL']
-import re
-import uuid
 from datetime import datetime
 from tempfile import TemporaryFile
-import boto3
-import flask
+import boto3, flask, facebook, re, uuid
 from flask import Flask, request, flash, url_for, redirect, render_template, g
 from flask_login import LoginManager, unicode
 from flask_login import login_user, logout_user, current_user, login_required
@@ -13,20 +10,17 @@ from gtts import gTTS
 from sqlalchemy_utils import UUIDType
 from twitter import *
 from werkzeug.security import generate_password_hash, check_password_hash
+from PyLinkedinAPI.PyLinkedinAPI import PyLinkedinAPI
 
-# Set master account here
+#master account address here
 master = "master_account@arise-impact.org"
 
 app = Flask(__name__)
 app.config.from_pyfile('todoapp.cfg')
 db = SQLAlchemy(app)
-
 login_manager = LoginManager()
 login_manager.init_app(app)
-
 login_manager.login_view = 'login'
-
-
 
 class Doc(db.Model):
     __tablename__ = "documents"
@@ -106,7 +100,6 @@ class User(db.Model):
         if all(x.isalpha() or x.isspace() for x in self.name):
             return False
         return True
-
 
 class Todo(db.Model):
     __tablename__ = 'todos'
@@ -203,7 +196,7 @@ def mytts():
             return redirect(url_for('mytts'))
     return render_template('mytts.html')
 
-@app.route('/autotweet', methods=['GET', 'POST'])
+@app.route('/autopost', methods=['GET', 'POST'])
 @login_required
 def auto():
     #Query user's data here and check role
@@ -212,17 +205,37 @@ def auto():
             flash('Title is required', 'error')
         else:
             new_status=request.form['text']
-            config = {}
-            exec(open("twit_conf.py").read(), config)
-            twit = Twitter(
-                auth=OAuth(config["access_key"], config["access_secret"], config["consumer_key"], config["consumer_secret"]))
-            result = twit.statuses.update(status = new_status)
-            if result is True:
-                flash("Tweeted successfully!")
-            else:
-                flash("ERROR: Tweet failed. Please try again later")
-            return redirect(url_for('auto'))
-    return render_template('autotweet.html')
+            if 'Tweet' in request.form:
+                config = {}
+                exec(open("twit_conf.py").read(), config)
+                twit = Twitter(
+                    auth=OAuth(config["access_key"], config["access_secret"], config["consumer_key"], config["consumer_secret"]))
+                result = twit.statuses.update(status = new_status)
+                if result is True:
+                    flash("Tweeted successfully!")
+                else:
+                    flash("ERROR: Tweet failed. Please try again later")
+            if 'Facebook' in request.form:
+                config = {}
+                exec(open("fb_conf.py").read(), config)
+                graph = facebook.GraphAPI(config['access_token'])
+                resp = graph.get_object('me/accounts')
+                page_access_token = None
+                for page in resp['data']:
+                    if page['id'] == config['page_id']:
+                        page_access_token = page['access_token']
+                graph = facebook.GraphAPI(page_access_token)
+                status = graph.put_wall_post(new_status)
+                flash("Posted on Facebook succssfully!")
+                #Need to handle exceptions here to get an error message.
+            if 'LIn' in request.form:
+                config = {}
+                exec(open("lin_conf.py").read(), config)
+                linkedin = PyLinkedinAPI(config['access_token'])
+                linkedin.publish_profile_comment(new_status)
+
+        return redirect(url_for('auto'))
+    return render_template('autopost.html')
 
 @app.route('/directory', methods=['GET', 'POST'])
 @login_required
@@ -304,22 +317,18 @@ def login():
     flash('Logged in successfully')
     return redirect(request.args.get('next') or url_for('index'))
 
-
 @app.route('/logout')
 def logout():
     logout_user()
     return redirect(url_for('index'))
 
-
 @login_manager.user_loader
 def load_user(id):
     return User.query.get(id)
 
-
 @app.before_request
 def before_request():
     g.user = current_user
-
 
 if __name__ == '__main__':
     app.run()

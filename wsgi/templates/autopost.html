@@ -12,27 +12,28 @@
 		</div>
 	{% endif %}
 	{% endwith %}
-
-    <form action="" method=post class="form-horizontal">
-        <h2>Convert Text To Speech</h2>
+  <form action="" method=post class="form-horizontal">
+    <h2>Auto Post</h2>
     <div class="control-group">
         <div class="controls">
-          <textarea name="text" rows=10 class="input-xlarge" placeholder="Enter text to be converted here" required>{{ request.form.text }}</textarea>
+          <textarea name="text" rows=10 class="input-xlarge" placeholder="Enter post here" required>{{ request.form.text }}</textarea>
         </div>
     </div>
-     <br />
+
     <div class="control-group">
         <div class="controls">
-            <p> Select language:
-          <select name="lang" id="lang">
-              <option value="en" selected>English</option>
-              <option value="hi">Hindi</option>
-          </select></p>
+          <p>Twitter  <input type="checkbox" id="Twitter" name="Twitter"></p>
+        </div>
+        <div class="controls">
+          <p>Facebook  <input type="checkbox" id="Facebook" name="Facebook"></p>
+        </div>
+        <div class="controls">
+          <p>LinkedIn  <input type="checkbox" id="LIn" name="LIn"></p>
         </div>
     </div>
       <div class="control-group">
         <div class="controls">
-          <button type="submit" class="btn btn-success">CONVERT!</button>
+          <button type="submit" class="btn btn-success">POST NOW!</button>
           <a href="{{ url_for('index') }}"><button type="button" class="btn btn-info">HOME</button></a>
 
         </div>

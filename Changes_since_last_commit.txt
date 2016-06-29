@@ -24,3 +24,6 @@ Document Viewing: Corrections made to feature
 
 D
 Added TTS interface at '/mytts'
+
+E
+Added facebook and linked-in API implements
