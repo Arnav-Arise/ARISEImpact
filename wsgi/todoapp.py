@@ -4,6 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_login import login_user , logout_user , current_user , login_required
 from werkzeug.security import generate_password_hash, check_password_hash
+import uuid
+import jwt
 
 app = Flask(__name__)
 app.config.from_pyfile('todoapp.cfg')
@@ -17,9 +19,17 @@ login_manager.login_view = 'login'
 class User(db.Model):
     __tablename__ = "users"
     id = db.Column('user_id',db.Integer , primary_key=True)
+    
     username = db.Column('username', db.String(20), unique=True , index=True)
     password = db.Column('password' , db.String(250))
     email = db.Column('email',db.String(50),unique=True , index=True)
+    registered_on = db.Column('registered_on' , db.DateTime)
+    todos = db.relationship('Todo' , backref='user',lazy='dynamic')
+
+
+
+
+
     registered_on = db.Column('registered_on' , db.DateTime)
     todos = db.relationship('Todo' , backref='user',lazy='dynamic')
 
@@ -47,6 +57,9 @@ class User(db.Model):
     def get_id(self):
         return unicode(self.id)
 
+    def get_uuid(self):
+        return unicode(self.uuid)
+
     def __repr__(self):
         return '<User %r>' % (self.username)
 
@@ -69,9 +82,7 @@ class Todo(db.Model):
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html',
-        todos=Todo.query.filter_by(user_id = g.user.id).order_by(Todo.pub_date.desc()).all()
-    )
+    return render_template('index.html',todos=Todo.query.filter_by(user_uuid = g.user.uuid).order_by(Todo.pub_date.desc()).all())
 
 
 @app.route('/new', methods=['GET', 'POST'])
@@ -127,13 +138,27 @@ def login():
     remember_me = False
     if 'remember_me' in request.form:
         remember_me = True
-    registered_user = User.query.filter_by(username=username).first()
+    registered_user = User.query.filter_by(token=jwt).all()
+
     if registered_user is None:
         flash('Username is invalid' , 'error')
         return redirect(url_for('login'))
+
     if not registered_user.check_password(password):
         flash('Password is invalid','error')
         return redirect(url_for('login'))
+
+    uuid=db.Column(uuid.uuid4(), db.uuid ,unique=True)
+
+    payload = {
+              'sub': user.uuid
+	      }
+    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+            
+    token= db.Column(create_token(user), db.json )
+
+
+
     login_user(registered_user, remember = remember_me)
     flash('Logged in successfully')
     return redirect(request.args.get('next') or url_for('index'))
