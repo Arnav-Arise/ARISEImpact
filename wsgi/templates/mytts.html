@@ -13,7 +13,7 @@
 	{% endif %}
 	{% endwith %}
 
-    <form action="" method=post class="form-horizontal">
+    <form action="" method="get" class="form-horizontal">
         <h2>Convert Text To Speech</h2>
     <div class="control-group">
         <div class="controls">
@@ -33,7 +33,7 @@
       <div class="control-group">
         <div class="controls">
           <button type="submit" class="btn btn-success">CONVERT!</button>
-          <a href="{{ url_for('index') }}"><button type="button" class="btn btn-info">HOME</button></a>
+          <a href   ="{{ url_for('index') }}"><button type="button" class="btn btn-info">HOME</button></a>
 
         </div>
     </div>

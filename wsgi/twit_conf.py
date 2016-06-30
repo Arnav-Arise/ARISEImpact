@@ -1,5 +1,3 @@
-
-#Add your credentials here
 consumer_key = "XxXxXxxXXXxxxxXXXxXX"
 consumer_secret = "xXXXXXXXXxxxxXxXXxxXxxXXxXxXxxxxXxXXxxxXXx"
 access_key = "XXXXXXXX-xxXXxXXxxXxxxXxXXxXxXxXxxxXxxxxXxXXxXxxXX"

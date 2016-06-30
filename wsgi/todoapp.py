@@ -1,7 +1,13 @@
 # SQLALCHEMY_DATABASE_URI = os.environ['OPENSHIFT_POSTGRESQL_DB_URL']
 from datetime import datetime
 from tempfile import TemporaryFile
-import boto3, flask, facebook, re, uuid
+
+import boto
+import facebook
+import flask
+import re
+import uuid
+from PyLinkedinAPI.PyLinkedinAPI import PyLinkedinAPI
 from flask import Flask, request, flash, url_for, redirect, render_template, g
 from flask_login import LoginManager, unicode
 from flask_login import login_user, logout_user, current_user, login_required
@@ -10,9 +16,8 @@ from gtts import gTTS
 from sqlalchemy_utils import UUIDType
 from twitter import *
 from werkzeug.security import generate_password_hash, check_password_hash
-from PyLinkedinAPI.PyLinkedinAPI import PyLinkedinAPI
 
-#master account address here
+# master account address here
 master = "master_account@arise-impact.org"
 
 app = Flask(__name__)
@@ -21,6 +26,7 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
 
 class Doc(db.Model):
     __tablename__ = "documents"
@@ -31,10 +37,12 @@ class Doc(db.Model):
     db.session.commit()
 
     def __init__(self, title, bucket):
-        self.doc_title=title
-        self.doc_bucket=bucket
+        self.doc_title = title
+        self.doc_bucket = bucket
+
     def getId(self):
         return self.doc_id
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -91,15 +99,19 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % (self.username)
 
-    def OneWord(self):
+    def oneword(self):
         if ' ' in self.username:
             return False
         return True
 
-    def containsSpecial(self):
+    def get_role(self):
+        return self.role
+
+    def contains_special(self):
         if all(x.isalpha() or x.isspace() for x in self.name):
             return False
         return True
+
 
 class Todo(db.Model):
     __tablename__ = 'todos'
@@ -119,26 +131,27 @@ class Todo(db.Model):
         self.pub_date = datetime.utcnow()
 
 
-def passwordValid(p):
+def passwordvalid(p):
     x = False
     while not x:
-        if (len(p) < 6 or len(p) > 20):
+        if len(p) < 6 or len(p) > 20:
             flash("Password is not the right length (6-20)")
             x = True
-        if not re.search("[a-z]", p):
+        if not re.search('[a-z]', p):
             flash("Password does not contain lower case letters!")
             x = True
-        if not re.search("[0-9]", p):
+        if not re.search('[0-9]', p):
             flash("Password does not contain numbers!")
             x = True
-        if not re.search("[A-Z]", p):
+        if not re.search('[A-Z]', p):
             flash("Password does not contain upper case letters!")
             x = True
-        if re.search("\s", p):
+        if re.search('\s', p):
             flash("Password contains spaces!")
             x = True
         break
     return not x
+
 
 @app.route('/')
 @login_required
@@ -146,6 +159,7 @@ def index():
     return render_template('index.html',
                            todos=Todo.query.filter_by(user_id=g.user.id).order_by(Todo.pub_date.desc()).all()
                            )
+
 
 @app.route('/todos/<int:todo_id>', methods=['GET', 'POST'])
 @login_required
@@ -161,6 +175,7 @@ def show_or_update(todo_id):
         return redirect(url_for('index'))
     flash('You are not authorized to edit this todo item', 'error')
     return redirect(url_for('show_or_update', todo_id=todo_id))
+
 
 @app.route('/new', methods=['GET', 'POST'])
 @login_required
@@ -179,43 +194,93 @@ def new():
             return redirect(url_for('index'))
     return render_template('new.html')
 
+
 @app.route('/mytts', methods=['GET', 'POST'])
 @login_required
 def mytts():
-    if request.method == 'POST':
+    if request.method == 'GET':
         if not request.form['text']:
             flash('Text needed to proceed', 'error')
         else:
             text_input = request.form['text']
             tts = gTTS(text=text_input, lang=request.form['lang'])
-            f=TemporaryFile()
+            f = TemporaryFile()
             tts.write_to_fp(f)
-            flask.send_file(f,as_attachment=True,attachment_filename="MyTTSOutput", mimetype="audio/mpeg")
+            response = flask.send_file(f, as_attachment=True, attachment_filename="MyTTSOutput", mimetype="audio/mpeg")
             f.close()
             flash('Successful Text-to-Speech Convert')
-            return redirect(url_for('mytts'))
+            return redirect(url_for('mytts'), response)
     return render_template('mytts.html')
+
+
+'''How to get credentials for LinkedIn: You need to generate temporary access token for basic tests:
+•Acces thehttps://developer.linkedin.com/rest-console
+•On then Authentication menu select OAuth2
+•After you need to login and authorization to access some information from your LinkedIn proﬁle
+•Send anywhere request URL, for examplehttps://api.linkedin.com/v1/people/~?format=json, and copy ﬁeld access token
+'''
+
+'''How to get credentials for FB: create a Facebook App which will be used to access Facebook's Graph API. Go to Facebook Apps dashboard -> Click Add a New App -> Choose platform WWW -> Choose a new name for your app -> Click Create New Facebook App ID -> Create a New App ID -> ChooseCategory (I chose "Entertainment") -> Click Create App ID again. Go back to Apps dashboard -> Select the new app -> Settings -> Basic -> Enter Contact Email. This is required to take your app out of the sandbox. Go to Status & Review -> Do you want to make this app and all its live features available to the general public? -> Toggle the button to Yes -> Make App Public? -> Yes. This will enable others to see posts by your app in their timelines - otherwise, only you will see the wall posts by the app.  Make a note of the App ID and App Secret '''
+
+'''
+    CODE TO IMPORT medium_conf details
+    Issue - Don't know how to retrieve content :-/
+        conf={}
+        exec(open("medium_conf.py").read(), conf)
+        client=Client(application_id=conf["application_id"], application_secret=conf["application_secret"])
+
+        #Delete lines below if access token is already present
+        auth_url = client.get_authorization_url("secretstate", conf["redirect_url"],
+                                               ["basicProfile", "publishPost"])
+        auth = client.exchange_authorization_code("YOUR_AUTHORIZATION_CODE", conf["redirect_url"])
+
+        client.access_token = auth["access_token"]
+        user = client.get_current_user()
+'''
+
 
 @app.route('/autopost', methods=['GET', 'POST'])
 @login_required
 def auto():
-    #Query user's data here and check role
+    # registered_user = User.query.filter_by(id=g.user.id).first()
+    # if registered_user.get_role() is not 'admin':
+    # flash('You are not authorized to use this feature')
+    # return redirect(url_for('index'))
+
+    if request.method == 'GET':
+        flash('')
+    # Alternate method for Medium - Get JSON info from https://www.medium.com/@handlename/latest?format=json
+    # handle = "myhandle"
+    # article.name = <Get name of article>
+    # article.id = <Get post id>
+    # article.name = article.name.lstrip()
+    # article.name = article.name.lower()
+    # article.name.replace(' ', '-')
+    # url= 'https://www.medium.com/'+ handle + '/' + article.name + '-' +article.id
+    # return render_template('autopost.html' url=url)
+    # Adjust textarea in autopost.html to set some default text, involving {{ url }}
+    # NOTE - The JSON info does not contain NAME. One source suggested the use of Kimono API generator to extract the name as a property
+
     if request.method == 'POST':
         if not request.form['text']:
             flash('Title is required', 'error')
         else:
-            new_status=request.form['text']
-            if 'Tweet' in request.form:
+            new_status = request.form['text']
+            checked = False
+            if 'Twitter' in request.form:
+                checked = True
                 config = {}
                 exec(open("twit_conf.py").read(), config)
                 twit = Twitter(
-                    auth=OAuth(config["access_key"], config["access_secret"], config["consumer_key"], config["consumer_secret"]))
-                result = twit.statuses.update(status = new_status)
+                    auth=OAuth(config["access_key"], config["access_secret"], config["consumer_key"],
+                               config["consumer_secret"]))
+                result = twit.statuses.update(status=new_status)
                 if result is True:
                     flash("Tweeted successfully!")
                 else:
                     flash("ERROR: Tweet failed. Please try again later")
             if 'Facebook' in request.form:
+                checked = True
                 config = {}
                 exec(open("fb_conf.py").read(), config)
                 graph = facebook.GraphAPI(config['access_token'])
@@ -227,30 +292,77 @@ def auto():
                 graph = facebook.GraphAPI(page_access_token)
                 status = graph.put_wall_post(new_status)
                 flash("Posted on Facebook succssfully!")
-                #Need to handle exceptions here to get an error message.
-            if 'LIn' in request.form:
+                # Need to handle exceptions here to get an error message.
+            if 'LinkedIn' in request.form:
+                checked = True
                 config = {}
                 exec(open("lin_conf.py").read(), config)
                 linkedin = PyLinkedinAPI(config['access_token'])
                 linkedin.publish_profile_comment(new_status)
-
+            if checked is False:
+                flash('Please select at least one checkbox', 'error')
         return redirect(url_for('auto'))
     return render_template('autopost.html')
+
+
+def update_docs_db(bucket_name, config):
+    s3 = boto.connect_s3(config['AWS_ACCESS_KEY_ID'], config['AWS_SECRET_ACCESS_KEY'])
+    for bucket in s3.get_bucket(bucket_name):
+        for file in bucket.list():
+            doc = Doc(file.key, bucket.name)
+            db.session.add(doc)
+            db.session.commit()
+    return Doc.query.filter_by(doc_bucket=bucket_name).order_by(Doc.doc_id).all()
+
 
 @app.route('/directory', methods=['GET', 'POST'])
 @login_required
 def directory():
-    s3=boto3.resource('s3')
-    for bucket in s3.buckets.all():
-        for file in bucket.objects.filter(Prefix='foo/bar'):
-            doc = Doc(file, bucket.name)
-            db.session.add(doc)
-            db.session.commit()
-    return render_template('directory.html',
-                           documents=Doc.query.order_by(Doc.doc_id).all()
+    return render_template('directory.html')
+
+
+@app.route('/directory/pdf', methods=['GET', 'POST'])
+@login_required
+def pdf_directory():
+    config = {}
+    exec(open("s3bucket_conf.py").read(), config)
+    return render_template('pdf-directory.html',
+                           documents=update_docs_db(config['PDF_BUCKET'], config)
                            )
 
-@app.route('/directory/<string:doc_title>', methods=['GET', 'POST'])
+
+@app.route('/directory/audio', methods=['GET', 'POST'])
+@login_required
+def audio_directory():
+    config = {}
+    exec(open("s3bucket_conf.py").read(), config)
+    return render_template('audio-directory.html',
+                           documents=update_docs_db(config['AUDIO_BUCKET'], config)
+                           )
+
+
+@app.route('/directory/video', methods=['GET', 'POST'])
+@login_required
+def video_directory():
+    config = {}
+    exec(open("s3bucket_conf.py").read(), config)
+    return render_template('video-directory.html',
+                           documents=update_docs_db(config['VIDEO_BUCKET'], config)
+                           )
+
+
+@app.route('/directory/audio', methods=['GET', 'POST'])
+@login_required
+def sem_directory():
+    config = {}
+    exec(open("s3bucket_conf.py").read(), config)
+    return render_template('SEM-directory.html',
+                           documents=update_docs_db(config['SEM_BUCKET'], config)
+                           )
+
+
+# PDF Viewer
+@app.route('/directory/pdf/<string:doc_title>', methods=['GET', 'POST'])
 @login_required
 def showdoc(doc_title):
     doc_item = Doc.query.get(doc_title)
@@ -258,6 +370,8 @@ def showdoc(doc_title):
         return render_template('docview.html', doc=doc_item)
     flash('You are not authorized to view this file', 'error')
     return redirect(url_for('showdoc', doc_title=doc_title))
+
+
 # Download feature not implemented yet
 
 
@@ -279,18 +393,18 @@ def register():
     if prior is not None:
         snag = True
         flash('This E-mail ID has already been registered!')
-    if user.OneWord() is False:
+    if user.oneword() is False:
         snag = True
         flash('Username has to be One Word')
-    if user.containsSpecial() is True:
+    if user.contains_special() is True:
         snag = True
         flash('Name cannot contain Special Characters or Numbers')
-    if passwordValid(request.form['password']) is False:
+    if passwordvalid(request.form['password']) is False:
         snag = True
     if snag is False:
         db.session.add(user)
         db.session.commit()
-        flash('User successfully registered as ' + user.role) #Remove role once confirmed as working
+        flash('User successfully registered as ' + user.role)  # Remove role once confirmed as working
         return redirect(url_for('login'))
     else:
         return redirect(url_for('register'))
@@ -317,18 +431,22 @@ def login():
     flash('Logged in successfully')
     return redirect(request.args.get('next') or url_for('index'))
 
+
 @app.route('/logout')
 def logout():
     logout_user()
     return redirect(url_for('index'))
 
+
 @login_manager.user_loader
 def load_user(id):
     return User.query.get(id)
 
+
 @app.before_request
 def before_request():
     g.user = current_user
+
 
 if __name__ == '__main__':
     app.run()

@@ -27,3 +27,8 @@ Added TTS interface at '/mytts'
 
 E
 Added facebook and linked-in API implements
+
+F
+Few edits to TTS (Still not working, figure out how to send a response object and trigger a download dialog)
+Major changes to the directory browser (Split into 4 parts). 
+Icon buttons added for pdf, audio, video (Runs when working as a stand-alone html page, but not when the app is run as a whole)

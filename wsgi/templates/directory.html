@@ -1,16 +1,22 @@
 {% extends "layout.html" %}
 {% block body %}
-<div id="main" class="container">
-    <h2>Documents Available</h2>
-    <table class="table table-hover">
-      <tr>
-        <th>#
-        <th>Documents
-          {%- for doc in documents %}
-        <tr class={{ "success" if doc.done }}>
-        <td><a href="/directory/{{doc.doc_title }}">{{ doc.doc_id }}</a>
-        <td style={{ "text-decoration:line-through" if doc.done }}>{{ doc.title }}  </td>
-        {%- endfor %}
-    </table>
-</div>
+     <h2>Main Directory</h2>
+    <h5 align="left">Folders available: </h5>
+    <div class="control-group">
+        <div class="controls">
+          <a href="{{ url_for('pdf_directory') }}"><input type="image" title="pdf" src="pdf-icon.jpg" alt="PDF" class="img-thumbnail"></a>
+          <a href="{{ url_for('audio_directory') }}"><input type="image" title="audio" src="music-icon.png" alt="AUDIO" class="img-thumbnail"></a>
+          <a href="{{ url_for('video_directory') }}"><input type="image" title="video" src="video-icon-1.png" alt="VIDEO" class="img-thumbnail"></a>
+
+
+          <a href="{{ url_for('sem_directory') }}"><input type="button" class="btn btn-default" title="sem" value="SEM Modules"></a>
+
+<!-- <input type="image" title="SEM" src="sem-icon.png" alt="SEM Modules"> -->
+        </div>
+    </div>
+    <div class="control-group">
+        <div class="controls">
+          <button type="button" class="btn btn-info">Home</button>
+        </div>
+    </div>
 {% endblock %}

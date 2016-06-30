@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block body %}
+<div id="main" class="container">
+    <h2>Documents Available</h2>
+    <table class="table table-hover">
+      <tr>
+        <th>#
+        <th>Documents
+          {%- for doc in documents %}
+        <tr class={{ "success" if doc.done }}>
+        <td><a href="/directory/pdf/{{doc.doc_title }}">{{ doc.doc_id }}</a>
+        <td style={{ "text-decoration:line-through" if doc.done }}>{{ doc.title }}  </td>
+        {%- endfor %}
+    </table>
+</div>
+{% endblock %}
