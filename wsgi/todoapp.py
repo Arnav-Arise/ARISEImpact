@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_login import login_user , logout_user , current_user , login_required
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.dialects.postgresql import JSON
 import uuid
 import jwt
 
@@ -19,19 +20,13 @@ login_manager.login_view = 'login'
 class User(db.Model):
     __tablename__ = "users"
     id = db.Column('user_id',db.Integer , primary_key=True)
-    
     username = db.Column('username', db.String(20), unique=True , index=True)
     password = db.Column('password' , db.String(250))
     email = db.Column('email',db.String(50),unique=True , index=True)
     registered_on = db.Column('registered_on' , db.DateTime)
     todos = db.relationship('Todo' , backref='user',lazy='dynamic')
-
-
-
-
-
-    registered_on = db.Column('registered_on' , db.DateTime)
-    todos = db.relationship('Todo' , backref='user',lazy='dynamic')
+    uuid = db.Column('uuid', db.Integer , unique=True)
+    jwt = db.Column(JSON)
 
     def __init__(self , username ,password , email):
         self.username = username
@@ -83,8 +78,7 @@ class Todo(db.Model):
 @login_required
 def index():
     return render_template('index.html',todos=Todo.query.filter_by(user_uuid = g.user.uuid).order_by(Todo.pub_date.desc()).all())
-
-
+   
 @app.route('/new', methods=['GET', 'POST'])
 @login_required
 def new():
@@ -123,6 +117,7 @@ def register():
     if request.method == 'GET':
         return render_template('register.html')
     user = User(request.form['username'] , request.form['password'],request.form['email'])
+    uuid=uuid.uuid4()
     db.session.add(user)
     db.session.commit()
     flash('User successfully registered')
@@ -138,7 +133,7 @@ def login():
     remember_me = False
     if 'remember_me' in request.form:
         remember_me = True
-    registered_user = User.query.filter_by(token=jwt).all()
+    registered_user = User.query.filter_by(username=username).first()
 
     if registered_user is None:
         flash('Username is invalid' , 'error')
@@ -148,17 +143,11 @@ def login():
         flash('Password is invalid','error')
         return redirect(url_for('login'))
 
-    uuid=db.Column(uuid.uuid4(), db.uuid ,unique=True)
-
+    uuid=uuid.uuid4()
     payload = {
               'sub': user.uuid
 	      }
-    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
-            
-    token= db.Column(create_token(user), db.json )
-
-
-
+    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')        
     login_user(registered_user, remember = remember_me)
     flash('Logged in successfully')
     return redirect(request.args.get('next') or url_for('index'))
