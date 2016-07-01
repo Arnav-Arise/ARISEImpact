@@ -4,3 +4,5 @@ PDF_BUCKET = "..."
 AUDIO_BUCKET = "..."
 VIDEO_BUCKET = "..."
 SEM_BUCKET = "..."
+UPLOAD_FOLDER = "uploads/"
+ALLOWED_EXTENSIONS = set(['pdf', 'mp3', 'ogg', 'mp4'])

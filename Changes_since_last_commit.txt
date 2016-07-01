@@ -18,7 +18,6 @@ FEATURE 2: Auto-tweet
 1. Add your credentials in twit_conf.py
 2. '/autotweet' to view interface
 
-
 C
 Document Viewing: Corrections made to feature
 
@@ -32,3 +31,15 @@ F
 Few edits to TTS (Still not working, figure out how to send a response object and trigger a download dialog)
 Major changes to the directory browser (Split into 4 parts). 
 Icon buttons added for pdf, audio, video (Runs when working as a stand-alone html page, but not when the app is run as a whole)
+
+G (1st july, 5 pm)
+Restructured Directory, improved usage of S3 bucket (boto rather than boto3)
+Added Upload capability to the app, for directory. Feature detects extension and places it in the right bucket automatically.
+Added a mock 'forgotpassword' route
+Added lang attribute in tabs according to WCAG 2.0
+
+Further work left - Working out download capabilities for TTS and PDF viewer. Audio and video templates. Fusing JWT code into branch. Building the mock password route. More WCAG 2.0 implementation
+
+NOTE: Since WCAG 2.0 is mostly front end stuff, not sure if I should mess around with the designing (dunno much of it)
+
+Errors: Credential errors for FB/Twitter/LinkedIn/S3 Bucket, response not valid for mytts 

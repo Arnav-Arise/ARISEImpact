@@ -1,7 +1,9 @@
 # SQLALCHEMY_DATABASE_URI = os.environ['OPENSHIFT_POSTGRESQL_DB_URL']
+import os
 from datetime import datetime
 from tempfile import TemporaryFile
 
+from boto.s3.key import Key
 import boto
 import facebook
 import flask
@@ -18,6 +20,8 @@ from twitter import *
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # master account address here
+from werkzeug.utils import secure_filename
+
 master = "master_account@arise-impact.org"
 
 app = Flask(__name__)
@@ -43,6 +47,9 @@ class Doc(db.Model):
     def getId(self):
         return self.doc_id
 
+    def getbucketname(self):
+        return self.doc_bucket
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -51,7 +58,7 @@ class User(db.Model):
     password = db.Column('password', db.String(250))
     email = db.Column('email', db.String(50), unique=True, index=True)
     registered_on = db.Column('registered_on', db.DateTime)
-    todos = db.relationship('Todo', backref='user', lazy='dynamic')
+    todos = db.relationship('Todo', backref='User', lazy='dynamic')
     org = db.Column('org', db.String(250))
     name = db.Column('name', db.String(250))
     role = db.Column('role', db.Text)
@@ -131,28 +138,6 @@ class Todo(db.Model):
         self.pub_date = datetime.utcnow()
 
 
-def passwordvalid(p):
-    x = False
-    while not x:
-        if len(p) < 6 or len(p) > 20:
-            flash("Password is not the right length (6-20)")
-            x = True
-        if not re.search('[a-z]', p):
-            flash("Password does not contain lower case letters!")
-            x = True
-        if not re.search('[0-9]', p):
-            flash("Password does not contain numbers!")
-            x = True
-        if not re.search('[A-Z]', p):
-            flash("Password does not contain upper case letters!")
-            x = True
-        if re.search('\s', p):
-            flash("Password contains spaces!")
-            x = True
-        break
-    return not x
-
-
 @app.route('/')
 @login_required
 def index():
@@ -207,20 +192,29 @@ def mytts():
             f = TemporaryFile()
             tts.write_to_fp(f)
             response = flask.send_file(f, as_attachment=True, attachment_filename="MyTTSOutput", mimetype="audio/mpeg")
+            # Figure out how to return this response object
             f.close()
             flash('Successful Text-to-Speech Convert')
             return redirect(url_for('mytts'), response)
     return render_template('mytts.html')
 
 
+# Auto-post section begins here
 '''How to get credentials for LinkedIn: You need to generate temporary access token for basic tests:
-•Acces thehttps://developer.linkedin.com/rest-console
+•Access the https://developer.linkedin.com/rest-console
 •On then Authentication menu select OAuth2
 •After you need to login and authorization to access some information from your LinkedIn proﬁle
 •Send anywhere request URL, for examplehttps://api.linkedin.com/v1/people/~?format=json, and copy ﬁeld access token
 '''
 
-'''How to get credentials for FB: create a Facebook App which will be used to access Facebook's Graph API. Go to Facebook Apps dashboard -> Click Add a New App -> Choose platform WWW -> Choose a new name for your app -> Click Create New Facebook App ID -> Create a New App ID -> ChooseCategory (I chose "Entertainment") -> Click Create App ID again. Go back to Apps dashboard -> Select the new app -> Settings -> Basic -> Enter Contact Email. This is required to take your app out of the sandbox. Go to Status & Review -> Do you want to make this app and all its live features available to the general public? -> Toggle the button to Yes -> Make App Public? -> Yes. This will enable others to see posts by your app in their timelines - otherwise, only you will see the wall posts by the app.  Make a note of the App ID and App Secret '''
+'''How to get credentials for FB: create a Facebook App which will be used to access Facebook's Graph API. Go to
+Facebook Apps dashboard -> Click Add a New App -> Choose platform WWW -> Choose a new name for your app -> Click Create
+New Facebook App ID -> Create a New App ID -> Choose Category (I chose "Entertainment") -> Click Create App ID again. Go
+back to Apps dashboard -> Select the new app -> Settings -> Basic -> Enter Contact Email.
+This is required to take your app out of the sandbox. Go to Status & Review -> Do you want to make this app and all its
+live features available to the general public? -> Toggle the button to Yes -> Make App Public? -> Yes. This will enable
+others to see posts by your app in their timelines - otherwise, only you will see the wall posts by the app.
+Make a note of the App ID and App Secret '''
 
 '''
     CODE TO IMPORT medium_conf details
@@ -242,6 +236,7 @@ def mytts():
 @app.route('/autopost', methods=['GET', 'POST'])
 @login_required
 def auto():
+    # Code for checking ROLE and validation
     # registered_user = User.query.filter_by(id=g.user.id).first()
     # if registered_user.get_role() is not 'admin':
     # flash('You are not authorized to use this feature')
@@ -249,7 +244,8 @@ def auto():
 
     if request.method == 'GET':
         flash('')
-    # Alternate method for Medium - Get JSON info from https://www.medium.com/@handlename/latest?format=json
+    # Alternate method for Medium
+    # Get JSON info from https://www.medium.com/@handlename/latest?format=json
     # handle = "myhandle"
     # article.name = <Get name of article>
     # article.id = <Get post id>
@@ -259,7 +255,8 @@ def auto():
     # url= 'https://www.medium.com/'+ handle + '/' + article.name + '-' +article.id
     # return render_template('autopost.html' url=url)
     # Adjust textarea in autopost.html to set some default text, involving {{ url }}
-    # NOTE - The JSON info does not contain NAME. One source suggested the use of Kimono API generator to extract the name as a property
+    # NOTE - The JSON info does not contain NAME.
+    # One source suggested the use of Kimono API generator to extract the name as a property
 
     if request.method == 'POST':
         if not request.form['text']:
@@ -291,7 +288,7 @@ def auto():
                         page_access_token = page['access_token']
                 graph = facebook.GraphAPI(page_access_token)
                 status = graph.put_wall_post(new_status)
-                flash("Posted on Facebook succssfully!")
+                flash("Posted on Facebook successfully!")
                 # Need to handle exceptions here to get an error message.
             if 'LinkedIn' in request.form:
                 checked = True
@@ -299,10 +296,17 @@ def auto():
                 exec(open("lin_conf.py").read(), config)
                 linkedin = PyLinkedinAPI(config['access_token'])
                 linkedin.publish_profile_comment(new_status)
+                # Need to handle exceptions here to get an error message.
+                flash("Posted on LinkedIn successfully!")
             if checked is False:
                 flash('Please select at least one checkbox', 'error')
         return redirect(url_for('auto'))
     return render_template('autopost.html')
+
+
+# All S3 Bucket related functions
+s3_conf = {}
+exec(open("s3bucket_conf.py").read(), s3_conf)
 
 
 def update_docs_db(bucket_name, config):
@@ -315,64 +319,136 @@ def update_docs_db(bucket_name, config):
     return Doc.query.filter_by(doc_bucket=bucket_name).order_by(Doc.doc_id).all()
 
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in s3_conf['ALLOWED_EXTENSIONS']
+
+
+def bucket_type(name):
+    ext = name.rsplit('.', 1)[1]
+    if ext is 'pdf':
+        return s3_conf['PDF_BUCKET']
+    elif ext is 'mp3' or ext is 'ogg':
+        return s3_conf['PDF_BUCKET']
+    elif ext is 'mp4':
+        return s3_conf['VIDEO_BUCKET']
+
+
+def gettype(bucket_name):
+    if bucket_name is s3_conf['PDF_BUCKET']:
+        return 'pdf_directory'
+    if bucket_name is s3_conf['AUDIO_BUCKET']:
+        return 'audio_directory'
+    if bucket_name is s3_conf['VIDEO_BUCKET']:
+        return 'video_directory'
+    if bucket_name is s3_conf['SEM_BUCKET']:
+        return 'sem_directory'
+
+
+# Main directory - 4 pic icons for the 4 buckets and an option to upload a file
+# File uploaded automatically goes to required bucket and view of that sub-directory opens
 @app.route('/directory', methods=['GET', 'POST'])
 @login_required
 def directory():
-    return render_template('directory.html')
+    if request.method == 'POST':
+        file = request.files['fileToUpload']
+        if file and allowed_file(file.filename):  # Checks if a file has been attached, and of valid extension
+            filename = secure_filename(file.filename)  # Removes forbidden characters
+            file.save(os.path.join(s3_conf['UPLOAD_FOLDER'], filename))
+            bucket_name = bucket_type(filename)
+            if 'sem_check' in request.form:
+                bucket_name = '%s' % (s3_conf['SEM_BUCKET'])
+            # Catch an exception here onwards
+            s3 = boto.connect_s3(s3_conf['AWS_ACCESS_KEY_ID'], s3_conf['AWS_SECRET_ACCESS_KEY'])
+            namestring = '%s.' % bucket_name
+            bucket = s3.get_bucket(namestring.lower())
+            k = Key(bucket)
+            k.key = filename
+            k.set_contents_from_filename(filename)  # Path probably needed here
+            k.make_public()  # Otherwise, the file will not be accessible by apps other than S3 Amazon
+            os.remove(filename)
+            func = gettype(bucket_name)  # Gets name of the function  to reditect to
+            return redirect(url_for(func))
+        else:
+            flash('File type not allowed or file does not exist')
+            return redirect(url_for('directory'))
+    if request.method == 'GET':
+        return render_template('directory.html')
 
 
+# Sub-directory sections begins here
 @app.route('/directory/pdf', methods=['GET', 'POST'])
 @login_required
 def pdf_directory():
-    config = {}
-    exec(open("s3bucket_conf.py").read(), config)
-    return render_template('pdf-directory.html',
-                           documents=update_docs_db(config['PDF_BUCKET'], config)
+    return render_template('sub-directory.html',
+                           documents=update_docs_db(s3_conf['PDF_BUCKET'], s3_conf)
                            )
 
 
 @app.route('/directory/audio', methods=['GET', 'POST'])
 @login_required
 def audio_directory():
-    config = {}
-    exec(open("s3bucket_conf.py").read(), config)
-    return render_template('audio-directory.html',
-                           documents=update_docs_db(config['AUDIO_BUCKET'], config)
+    return render_template('sub-directory.html',
+                           documents=update_docs_db(s3_conf['AUDIO_BUCKET'], s3_conf)
                            )
 
 
 @app.route('/directory/video', methods=['GET', 'POST'])
 @login_required
 def video_directory():
-    config = {}
-    exec(open("s3bucket_conf.py").read(), config)
-    return render_template('video-directory.html',
-                           documents=update_docs_db(config['VIDEO_BUCKET'], config)
+    return render_template('sub-directory.html',
+                           documents=update_docs_db(s3_conf['VIDEO_BUCKET'], s3_conf)
                            )
 
 
-@app.route('/directory/audio', methods=['GET', 'POST'])
+@app.route('/directory/sem', methods=['GET', 'POST'])
 @login_required
 def sem_directory():
-    config = {}
-    exec(open("s3bucket_conf.py").read(), config)
-    return render_template('SEM-directory.html',
-                           documents=update_docs_db(config['SEM_BUCKET'], config)
+    return render_template('sub-directory.html',
+                           documents=update_docs_db(s3_conf['SEM_BUCKET'], s3_conf)
                            )
 
 
-# PDF Viewer
-@app.route('/directory/pdf/<string:doc_title>', methods=['GET', 'POST'])
+# View Loader for PDF, Audio, etc.
+@app.route('/directory/<string:doc_bucket>/<string:doc_title>', methods=['GET', 'POST'])
 @login_required
-def showdoc(doc_title):
+def showdoc(doc_bucket, doc_title):
     doc_item = Doc.query.get(doc_title)
+    doc_bucket = doc_item.getbucketname()
     if request.method == 'GET':
-        return render_template('docview.html', doc=doc_item)
+        if doc_bucket is s3_conf['PDF_BUCKET']:
+            return render_template('doc-view.html', doc=doc_item)
+        elif doc_bucket is s3_conf['AUDIO_BUCKET']:
+            return render_template('audio-player.html', doc=doc_item)
+        elif doc_bucket is s3_conf['VIDEO_BUCKET']:
+            return render_template('video-player.html', doc=doc_item)
+        elif doc_bucket is s3_conf['SEM_BUCKET']:
+            return render_template('audio-player.html', doc=doc_item)
     flash('You are not authorized to view this file', 'error')
-    return redirect(url_for('showdoc', doc_title=doc_title))
+    return redirect(url_for('showdoc', doc_bucket=doc_bucket, doc_title=doc_title))
 
 
-# Download feature not implemented yet
+# Registration section begins here
+def passwordvalid(p):
+    x = False
+    while not x:
+        if len(p) < 6 or len(p) > 20:
+            flash("Password is not the right length (6-20)")
+            x = True
+        if not re.search('[a-z]', p):
+            flash("Password does not contain lower case letters!")
+            x = True
+        if not re.search('[0-9]', p):
+            flash("Password does not contain numbers!")
+            x = True
+        if not re.search('[A-Z]', p):
+            flash("Password does not contain upper case letters!")
+            x = True
+        if re.search('\s', p):
+            flash("Password contains spaces!")
+            x = True
+        break
+    return not x
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -408,6 +484,11 @@ def register():
         return redirect(url_for('login'))
     else:
         return redirect(url_for('register'))
+
+
+@app.route('/forgotpassword', methods=['GET', 'POST'])
+def forgot_password():
+    return render_template('forgot-password.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])

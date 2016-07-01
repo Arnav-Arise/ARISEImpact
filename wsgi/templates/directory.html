@@ -1,22 +1,35 @@
 {% extends "layout.html" %}
 {% block body %}
      <h2>Main Directory</h2>
-    <h5 align="left">Folders available: </h5>
+    <h4 align="left">Folders available: </h4>
     <div class="control-group">
         <div class="controls">
           <a href="{{ url_for('pdf_directory') }}"><input type="image" title="pdf" src="pdf-icon.jpg" alt="PDF" class="img-thumbnail"></a>
           <a href="{{ url_for('audio_directory') }}"><input type="image" title="audio" src="music-icon.png" alt="AUDIO" class="img-thumbnail"></a>
           <a href="{{ url_for('video_directory') }}"><input type="image" title="video" src="video-icon-1.png" alt="VIDEO" class="img-thumbnail"></a>
-
-
           <a href="{{ url_for('sem_directory') }}"><input type="button" class="btn btn-default" title="sem" value="SEM Modules"></a>
 
 <!-- <input type="image" title="SEM" src="sem-icon.png" alt="SEM Modules"> -->
         </div>
     </div>
+
+    <br /> <br /><h4>Upload a file to Directory: </h4>
+ <form enctype="multipart/form-data" action="" method=post class="form-horizontal">
+     <div class="control-group">
+        <div class="controls">
+          <input type="file" name="fileToUpload" id="fileToUpload">
+          <p>This is a SEM: <input type="checkbox" id="sem_check" name="sem_check"></p>
+            <button type="submit" class="btn btn-success">Upload File</button>
+        </div>
+    </div>
+
+    </form>
+
     <div class="control-group">
         <div class="controls">
+           <p align="left"><a href="{{ url_for('index') }}">
           <button type="button" class="btn btn-info">Home</button>
+                </a></p>
         </div>
     </div>
 {% endblock %}
