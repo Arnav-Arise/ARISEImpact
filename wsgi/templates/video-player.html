@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Video Player</title>
+<link href='assets/Video Player/media-player.css' rel='stylesheet' />
+<script src='assets/Video Player/media-player.js'></script>
+</head>
+<body>
+<div id='media-player'>
+    <div align="center">
+		<video id='media-video'  controls>
+			<source src='https://{{ doc.doc_bucket }}.s3.amazonaws.com/{{ doc.doc_title }}' type='video/mp4'>
+		</video>
+		<div id='media-controls'>
+			<progress id='progress-bar' max='100' value='0'>0% played</progress>
+			<button id='replay-button' class='replay' title='replay' onclick='replayMedia();'>Replay</button>
+			<button id='play-pause-button' class='play' title='play' onclick='togglePlayPause();'>Play</button>
+			<button id='stop-button' class='stop' title='stop' onclick='stopPlayer();'>Stop</button>
+			<button id='volume-inc-button' class='volume-plus' title='increase volume' onclick='changeVolume("+");'>Increase volume</button>
+			<button id='volume-dec-button' class='volume-minus' title='decrease volume' onclick='changeVolume("-");'>Decrease volume</button>
+			<button id='mute-button' class='mute' title='mute' onclick='toggleMute("true");'>Mute</button>
+		</div>
+	</div>
+
+</div>
+</body>
+</html>

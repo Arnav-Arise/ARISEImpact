@@ -63,7 +63,7 @@ class User(db.Model):
     name = db.Column('name', db.String(250))
     role = db.Column('role', db.Text)
 
-    # Note to self -Understand the index property
+    # Understand index property
     db.create_all()
     db.session.commit()
 
@@ -165,6 +165,8 @@ def show_or_update(todo_id):
 @app.route('/new', methods=['GET', 'POST'])
 @login_required
 def new():
+    if request.method == 'GET':
+        return render_template('new.html')
     if request.method == 'POST':
         if not request.form['title']:
             flash('Title is required', 'error')
@@ -309,11 +311,13 @@ s3_conf = {}
 exec(open("s3bucket_conf.py").read(), s3_conf)
 
 
+# Fills DB with bucket contents
+# Might have to check for already existing entries
 def update_docs_db(bucket_name, config):
     s3 = boto.connect_s3(config['AWS_ACCESS_KEY_ID'], config['AWS_SECRET_ACCESS_KEY'])
     for bucket in s3.get_bucket(bucket_name):
         for file in bucket.list():
-            doc = Doc(file.key, bucket.name)
+            doc = Doc(str(file.key), bucket.name)
             db.session.add(doc)
             db.session.commit()
     return Doc.query.filter_by(doc_bucket=bucket_name).order_by(Doc.doc_id).all()
@@ -385,10 +389,11 @@ def pdf_directory():
                            )
 
 
+# Since an audio player can be placed in the same doc as the directory, the sub-directory is different for Audio &SEMs
 @app.route('/directory/audio', methods=['GET', 'POST'])
 @login_required
 def audio_directory():
-    return render_template('sub-directory.html',
+    return render_template('audio-player.html',
                            documents=update_docs_db(s3_conf['AUDIO_BUCKET'], s3_conf)
                            )
 
@@ -404,26 +409,34 @@ def video_directory():
 @app.route('/directory/sem', methods=['GET', 'POST'])
 @login_required
 def sem_directory():
-    return render_template('sub-directory.html',
+    return render_template('audio-player.html',
                            documents=update_docs_db(s3_conf['SEM_BUCKET'], s3_conf)
                            )
 
 
-# View Loader for PDF, Audio, etc.
+# View Loader for PDF and Video.
 @app.route('/directory/<string:doc_bucket>/<string:doc_title>', methods=['GET', 'POST'])
 @login_required
 def showdoc(doc_bucket, doc_title):
     doc_item = Doc.query.get(doc_title)
     doc_bucket = doc_item.getbucketname()
     if request.method == 'GET':
+        conn = boto.connect_s3(s3_conf['AWS_ACCESS_KEY_ID'], s3_conf['AWS_SECRET_ACCESS_KEY'])
+        bucket = conn.get_bucket(doc_bucket)
+        for l in bucket.list():
+            if str(l.key) is doc_title:
+                l.get_contents_to_filename(s3_conf['DWNLD_FOLDER'] + doc_title)
+                if doc_bucket is s3_conf['PDF_BUCKET']:
+                    return render_template('doc-view.html', doc=doc_item)
+                elif doc_bucket is s3_conf['VIDEO_BUCKET']:
+                    return render_template('video-player.html', doc=doc_item)
+            else:
+                continue
+        flash('The file does not exist')
         if doc_bucket is s3_conf['PDF_BUCKET']:
             return render_template('doc-view.html', doc=doc_item)
-        elif doc_bucket is s3_conf['AUDIO_BUCKET']:
-            return render_template('audio-player.html', doc=doc_item)
         elif doc_bucket is s3_conf['VIDEO_BUCKET']:
             return render_template('video-player.html', doc=doc_item)
-        elif doc_bucket is s3_conf['SEM_BUCKET']:
-            return render_template('audio-player.html', doc=doc_item)
     flash('You are not authorized to view this file', 'error')
     return redirect(url_for('showdoc', doc_bucket=doc_bucket, doc_title=doc_title))
 
@@ -488,7 +501,16 @@ def register():
 
 @app.route('/forgotpassword', methods=['GET', 'POST'])
 def forgot_password():
-    return render_template('forgot-password.html')
+    if request.method == 'GET':
+        return render_template('forgot-password.html')
+    email = request.form['email']
+    if User.query.filter_by(email=email).first():
+        # Send e-mail
+        flash('Recovery e-mail has been sent to your id')
+        return redirect(url_for('login'))
+    else:
+        flash('This e-mail has not been registered! Please register here.')
+        return redirect(url_for('register'))
 
 
 @app.route('/login', methods=['GET', 'POST'])

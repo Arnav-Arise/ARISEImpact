@@ -1,16 +1,20 @@
+
 {% extends "layout.html" %}
 {% block body %}
-<div id="main" class="container">
-    <h2> {{ doc.doc_bucket }} Available</h2>
-    <table class="table table-bordered">
+<script src="assets/AetherPlayer/js/AetherPlayer_bootstrap.js"></script>
+<!-- Find a way to send mp3 files from S3 bucket to playlist.js -->
+    <div id="main" class="container">
+        <h2>Audio Player: {{ doc.doc_title }}</h2>
+        <table class="table table-bordered">
       <tr>
         <th>#
         <th>Documents
           {%- for doc in documents %}
         <tr class={{ "success" if doc.done }}>
-        <td><a href="{{ url_for('showdoc') }}">{{ doc.doc_id }}</a>
+        <td>{{ doc.doc_id }}
         <td style={{ "text-decoration:line-through" if doc.done }}>{{ doc.title }}  </td>
         {%- endfor %}
     </table>
-</div>
+    </div>
 {% endblock %}
+S

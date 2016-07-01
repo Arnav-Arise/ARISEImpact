@@ -1,3 +1,4 @@
+
 //Note- Later alphabets indicate later commits
 A
 1. Role COLUMN added and function analyzerole() created
@@ -39,6 +40,9 @@ Added a mock 'forgotpassword' route
 Added lang attribute in tabs according to WCAG 2.0
 
 Further work left - Working out download capabilities for TTS and PDF viewer. Audio and video templates. Fusing JWT code into branch. Building the mock password route. More WCAG 2.0 implementation
+
+H:
+Added a rudimentary video and audio player (frontend only). Added an alternative (commented) method to view PDF docs if the link method does not directly open the pdf
 
 NOTE: Since WCAG 2.0 is mostly front end stuff, not sure if I should mess around with the designing (dunno much of it)
 

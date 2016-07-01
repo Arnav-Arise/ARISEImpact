@@ -11,6 +11,12 @@
      </iframe> -->
         <!-- alternate form of the link: http://s3.amazonaws.com/bucket_name/key -->
 
+        <!-- Check if this method works
+          <object data="template/assets/downloads/{{ doc.doc_title }}" type="application/pdf" width="65%" height="95%" border="10">
+            <p>Direct link to the pdf <a href="https://{{ doc.doc_bucket }}.s3.amazonaws.com/{{ doc.doc_title }}">here</a>!</p>
+        </object>
+        -->
+
         <object data="https://{{ doc.doc_bucket }}.s3.amazonaws.com/{{ doc.doc_title }}" type="application/pdf" width="65%" height="95%" border="10">
             <p>Direct link to the pdf <a href="https://{{ doc.doc_bucket }}.s3.amazonaws.com/{{ doc.doc_title }}">here</a>!</p>
         </object>

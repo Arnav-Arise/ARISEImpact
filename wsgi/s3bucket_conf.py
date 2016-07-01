@@ -5,4 +5,5 @@ AUDIO_BUCKET = "..."
 VIDEO_BUCKET = "..."
 SEM_BUCKET = "..."
 UPLOAD_FOLDER = "uploads/"
+DWNLD_FOLDER = "template/assets/downloads/"
 ALLOWED_EXTENSIONS = set(['pdf', 'mp3', 'ogg', 'mp4'])
