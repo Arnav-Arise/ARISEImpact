@@ -18,6 +18,7 @@ from gtts import gTTS
 from sqlalchemy_utils import UUIDType
 from twitter import *
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask import send_from_directory
 
 # master account address here
 from werkzeug.utils import secure_filename
@@ -185,19 +186,15 @@ def new():
 @app.route('/mytts', methods=['GET', 'POST'])
 @login_required
 def mytts():
-    if request.method == 'GET':
+    if request.method == 'POST':
         if not request.form['text']:
             flash('Text needed to proceed', 'error')
+            return redirect(url_for('mytts'))
         else:
             text_input = request.form['text']
             tts = gTTS(text=text_input, lang=request.form['lang'])
-            f = TemporaryFile()
-            tts.write_to_fp(f)
-            response = flask.send_file(f, as_attachment=True, attachment_filename="MyTTSOutput", mimetype="audio/mpeg")
-            # Figure out how to return this response object
-            f.close()
-            flash('Successful Text-to-Speech Convert')
-            return redirect(url_for('mytts'), response)
+            tts.save("output.mp3")
+            return flask.send_file('output.mp3', as_attachment=True)
     return render_template('mytts.html')
 
 
@@ -205,7 +202,7 @@ def mytts():
 '''How to get credentials for LinkedIn: You need to generate temporary access token for basic tests:
 •Access the https://developer.linkedin.com/rest-console
 •On then Authentication menu select OAuth2
-•After you need to login and authorization to access some information from your LinkedIn proﬁle
+•After you need to login and authorization to access some sainformation from your LinkedIn proﬁle
 •Send anywhere request URL, for examplehttps://api.linkedin.com/v1/people/~?format=json, and copy ﬁeld access token
 '''
 

@@ -47,3 +47,6 @@ Added a rudimentary video and audio player (frontend only). Added an alternative
 NOTE: Since WCAG 2.0 is mostly front end stuff, not sure if I should mess around with the designing (dunno much of it)
 
 Errors: Credential errors for FB/Twitter/LinkedIn/S3 Bucket, response not valid for mytts 
+
+I:
+TTS is working. Only for 100 chars though. 
