@@ -280,14 +280,8 @@ def auto():
                 config = {}
                 exec(open("fb_conf.py").read(), config)
                 graph = facebook.GraphAPI(config['access_token'])
-                resp = graph.get_object('me/accounts')
-                page_access_token = None
-                for page in resp['data']:
-                    if page['id'] == config['page_id']:
-                        page_access_token = page['access_token']
-                graph = facebook.GraphAPI(page_access_token)
                 status = graph.put_wall_post(new_status)
-                flash("Posted on Facebook successfully!")
+                flash("result- " +status)
                 # Need to handle exceptions here to get an error message.
             if 'LinkedIn' in request.form:
                 checked = True
@@ -386,7 +380,7 @@ def pdf_directory():
                            )
 
 
-# Since an audio player can be placed in the same doc as the directory, the sub-directory is different for Audio &SEMs
+# Since an audio player can be placed in the same doc as the directory, the sub-directory is different for Audio & SEMs
 @app.route('/directory/audio', methods=['GET', 'POST'])
 @login_required
 def audio_directory():
